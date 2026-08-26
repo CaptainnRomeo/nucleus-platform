@@ -1,0 +1,28 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: root
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+
+  source:
+    repoURL: https://github.com/CaptainnRomeo/nucleus-platform.git
+    targetRevision: main
+    path: platform/applications
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+
+  syncPolicy:
+    automated:
+      selfHeal: true
+      # prune deliberately OFF on the root app. A bad merge that deletes an
+      # Application file would otherwise cascade-delete that entire workload
+      # from the cluster. Child apps prune; the root does not.
+      prune: false
+    syncOptions:
+      - ServerSideApply=true

@@ -29,14 +29,18 @@ spec:
   # normalization applied, so the live object never byte-matches what we
   # rendered. Without this the app sits permanently OutOfSync - which trains
   # everyone to ignore the dashboard, defeating the point of having one.
+
+
   ignoreDifferences:
     - group: apiextensions.k8s.io
       kind: CustomResourceDefinition
       jsonPointers:
-        - /spec/conversion
+        # Deprecated field the API server defaults onto every CRD write.
+        # The chart does not set it, so live never matches rendered and the
+        # app sits permanently OutOfSync. Narrowly scoped on purpose - a
+        # broad ignore here would hide real schema changes.
+        - /spec/preserveUnknownFields
         - /status
-      managedFieldsManagers:
-        - kube-apiserver
 
   syncPolicy:
     automated:

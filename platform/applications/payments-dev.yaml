@@ -23,9 +23,22 @@ spec:
     namespace: payments
 
   syncPolicy:
-    # Deliberately MANUAL for now. We turn on automation in the next step so
-    # you can see the difference between "ArgoCD noticed" and "ArgoCD acted".
+    automated:
+      # Reverts out-of-band cluster changes back to Git. This is the switch
+      # that turns "ArgoCD noticed" into "ArgoCD acted".
+      selfHeal: true
+      # Deletes resources removed from Git. Off by default because a bad
+      # merge that drops a file would delete production. Enable deliberately.
+      prune: true
+      # Do not self-heal into a broken state if the last sync failed.
+      allowEmpty: false
     syncOptions:
-      - CreateNamespace=false   # the namespace is in Git; ArgoCD should not invent it
-      - ServerSideApply=true    # avoids the last-applied-configuration annotation
-                                # size limit that bites on large CRDs
+      - CreateNamespace=false
+      - ServerSideApply=true
+    retry:
+      limit: 3
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 2m
+

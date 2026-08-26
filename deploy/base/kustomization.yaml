@@ -1,0 +1,19 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Order matters here. Kustomize does not enforce it, but ArgoCD sync waves
+# will - a ResourceQuota must exist before pods, or the first apply races.
+resources:
+  - namespace.yaml
+  - resourcequota.yaml
+  - limitrange.yaml
+  - payment-api-deployment.yaml
+  - payment-api-service.yaml
+
+# Applied to every resource above. Beats hand-copying labels into each file
+# and forgetting one.
+labels:
+  - pairs:
+      app.kubernetes.io/part-of: nucleus
+      app.kubernetes.io/managed-by: argocd
+    includeSelectors: false

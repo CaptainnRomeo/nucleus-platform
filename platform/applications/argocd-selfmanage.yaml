@@ -1,0 +1,20 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: argocd-selfmanage
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/CaptainnRomeo/nucleus-platform.git
+    targetRevision: main
+    path: platform/argocd-config
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      selfHeal: true
+      prune: false
+    syncOptions:
+      - ServerSideApply=true

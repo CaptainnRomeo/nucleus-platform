@@ -1,0 +1,22 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: payments
+  namespace: argocd
+spec:
+  description: Payments domain - restricts what this team can deploy and where
+  sourceRepos:
+    - https://github.com/CaptainnRomeo/nucleus-platform.git
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: payments
+  # Cluster-scoped resources this project may create. Empty would mean none.
+  clusterResourceWhitelist:
+    - group: ""
+      kind: Namespace
+  # Explicitly deny anything that could escalate privilege across the cluster.
+  namespaceResourceBlacklist:
+    - group: rbac.authorization.k8s.io
+      kind: ClusterRole
+    - group: rbac.authorization.k8s.io
+      kind: ClusterRoleBinding

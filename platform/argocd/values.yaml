@@ -1,0 +1,64 @@
+# ArgoCD - chart 10.4.0 / app v3.5.1
+# Sized for a 3-worker kind cluster on ~10GB. Production would run the
+# application controller and repo server with far more headroom and HA replicas.
+
+global:
+  # Every ArgoCD component lands on a worker. In production you would instead
+  # taint a dedicated platform node pool - the GitOps controller is tier-0
+  # infrastructure and should not compete with application workloads.
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+              - key: node-role.kubernetes.io/control-plane
+                operator: DoesNotExist
+
+configs:
+  params:
+    # kind has no TLS-terminating ingress in front of ArgoCD yet, so the
+    # server runs plaintext behind port-forward. NEVER do this on a real
+    # cluster - it exposes the API and UI unencrypted.
+    server.insecure: true
+    # Default is 3m. Faster reconciliation makes drift demos immediate;
+    # at fleet scale this multiplies API server load, so it is a real
+    # trade-off rather than a free win.
+    timeout.reconciliation: 30s
+
+  cm:
+    # Track resources by annotation rather than the default label. The label
+    # method writes app.kubernetes.io/instance onto every managed object,
+    # which collides with charts that use that label in their own selectors.
+    application.resourceTrackingMethod: annotation
+
+controller:
+  resources:
+    requests: {cpu: 100m, memory: 256Mi}
+    limits: {memory: 768Mi}
+
+repoServer:
+  resources:
+    requests: {cpu: 50m, memory: 192Mi}
+    limits: {memory: 512Mi}
+
+server:
+  resources:
+    requests: {cpu: 50m, memory: 128Mi}
+    limits: {memory: 256Mi}
+
+redis:
+  resources:
+    requests: {cpu: 25m, memory: 64Mi}
+    limits: {memory: 192Mi}
+
+applicationSet:
+  resources:
+    requests: {cpu: 25m, memory: 64Mi}
+    limits: {memory: 192Mi}
+
+# Not needed for this lab and it costs ~100Mi.
+notifications:
+  enabled: false
+
+dex:
+  enabled: false

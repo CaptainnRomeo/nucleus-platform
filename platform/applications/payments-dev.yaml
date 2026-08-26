@@ -1,0 +1,31 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: payments-dev
+  namespace: argocd
+  finalizers:
+    # Without this, deleting the Application orphans every resource it created.
+    # With it, ArgoCD cascades the delete. Know both behaviours - "I deleted
+    # the App and the workloads kept running" is a common surprise.
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+
+  source:
+    repoURL: https://github.com/CaptainnRomeo/nucleus-platform.git
+    # A branch is a MOVING target. Fine for dev; production should pin a tag
+    # or commit SHA so a merge to main cannot silently change prod.
+    targetRevision: main
+    path: deploy/base
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: payments
+
+  syncPolicy:
+    # Deliberately MANUAL for now. We turn on automation in the next step so
+    # you can see the difference between "ArgoCD noticed" and "ArgoCD acted".
+    syncOptions:
+      - CreateNamespace=false   # the namespace is in Git; ArgoCD should not invent it
+      - ServerSideApply=true    # avoids the last-applied-configuration annotation
+                                # size limit that bites on large CRDs

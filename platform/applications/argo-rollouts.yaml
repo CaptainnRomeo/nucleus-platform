@@ -1,0 +1,33 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: argo-rollouts
+  namespace: argocd
+spec:
+  project: default
+
+  sources:
+    # Multi-source: chart from the upstream Helm repo, values from OUR git repo.
+    # This is the pattern that keeps you off "curl | kubectl apply" while
+    # still version-controlling your own configuration.
+    - repoURL: https://argoproj.github.io/argo-helm
+      chart: argo-rollouts
+      targetRevision: 2.40.4
+      helm:
+        valueFiles:
+          - $values/platform/argo-rollouts/values.yaml
+    - repoURL: https://github.com/CaptainnRomeo/nucleus-platform.git
+      targetRevision: main
+      ref: values
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argo-rollouts
+
+  syncPolicy:
+    automated:
+      selfHeal: true
+      prune: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true

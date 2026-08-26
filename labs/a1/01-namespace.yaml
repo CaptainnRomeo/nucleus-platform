@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: payments
+  labels:
+    # Pod Security Admission - replaced PodSecurityPolicy in 1.25.
+    # enforce = reject, audit = log, warn = tell the user at apply time.
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/enforce-version: v1.35
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
+    # Ownership labels - cost attribution and incident routing both need these.
+    nucleus.io/owner: platform-team
+    nucleus.io/tier: "0"
+    nucleus.io/env: dev

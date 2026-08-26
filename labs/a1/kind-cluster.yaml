@@ -1,0 +1,51 @@
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: nucleus
+
+networking:
+  # Explicit, non-default CIDRs. Overlapping pod/service ranges with a VPC or
+  # peered network is a real and painful outage class - decide them, don't inherit them.
+  podSubnet: "10.244.0.0/16"
+  serviceSubnet: "10.96.0.0/16"
+
+nodes:
+  - role: control-plane
+    image: kindest/node:v1.35.5@sha256:ce977ae6d65918d0b58a5f8b5e940429c2ce42fa3a5619ec2bbc60b949c0ac95
+    kubeadmConfigPatches:
+      - |
+        kind: InitConfiguration
+        nodeRegistration:
+          kubeletExtraArgs:
+            node-labels: "ingress-ready=true"
+    extraPortMappings:
+      # kind has no cloud load balancer. These mappings are how ingress-nginx
+      # becomes reachable from the host - the local stand-in for what the
+      # AWS Load Balancer Controller does on EKS.
+      - containerPort: 80
+        hostPort: 80
+        protocol: TCP
+      - containerPort: 443
+        hostPort: 443
+        protocol: TCP
+
+  # Fake availability zones. Without these you cannot practise
+  # topologySpreadConstraints, zone-aware PDBs, or reason about cross-AZ
+  # placement - all lead-level interview territory.
+  - role: worker
+    image: kindest/node:v1.35.5@sha256:ce977ae6d65918d0b58a5f8b5e940429c2ce42fa3a5619ec2bbc60b949c0ac95
+    labels:
+      topology.kubernetes.io/zone: zone-a
+      topology.kubernetes.io/region: local
+      nucleus.io/pool: general
+  - role: worker
+    image: kindest/node:v1.35.5@sha256:ce977ae6d65918d0b58a5f8b5e940429c2ce42fa3a5619ec2bbc60b949c0ac95
+    labels:
+      topology.kubernetes.io/zone: zone-b
+      topology.kubernetes.io/region: local
+      nucleus.io/pool: general
+  - role: worker
+    image: kindest/node:v1.35.5@sha256:ce977ae6d65918d0b58a5f8b5e940429c2ce42fa3a5619ec2bbc60b949c0ac95
+    labels:
+      topology.kubernetes.io/zone: zone-c
+      topology.kubernetes.io/region: local
+      nucleus.io/pool: general

@@ -1,0 +1,42 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: monitoring
+  namespace: argocd
+spec:
+  project: default
+
+  sources:
+    - repoURL: https://prometheus-community.github.io/helm-charts
+      chart: kube-prometheus-stack
+      targetRevision: 66.3.1
+      helm:
+        valueFiles:
+          - $values/platform/monitoring/values.yaml
+        # The stack ships very large CRDs. skipCrds renders the chart without
+        # them and lets ArgoCD apply them separately - avoids the same
+        # rendering problem we just hit with Rollouts.
+        skipCrds: false
+    - repoURL: https://github.com/CaptainnRomeo/nucleus-platform.git
+      targetRevision: main
+      ref: values
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+
+  ignoreDifferences:
+    - group: apiextensions.k8s.io
+      kind: CustomResourceDefinition
+      jsonPointers:
+        - /spec/preserveUnknownFields
+        - /status
+
+  syncPolicy:
+    automated:
+      selfHeal: true
+      prune: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+      - Replace=true

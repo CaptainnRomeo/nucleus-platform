@@ -5,3 +5,4 @@ resources:
   - payments-dev.yaml
   - argocd-selfmanage.yaml
   - argo-rollouts.yaml
+  - monitoring.yaml

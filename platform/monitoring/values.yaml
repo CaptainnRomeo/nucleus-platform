@@ -1,0 +1,45 @@
+# kube-prometheus-stack, sized for a 3-worker kind cluster.
+# We only need Prometheus itself for canary analysis; Grafana and the
+# alerting rules come in Block D.
+
+prometheus:
+  prometheusSpec:
+    retention: 2h
+    # No PVC - local-path on kind is fine but adds nothing here, and
+    # ephemeral storage keeps teardown clean.
+    resources:
+      requests: {cpu: 100m, memory: 512Mi}
+      limits: {memory: 1Gi}
+    # Discover ServiceMonitors in ALL namespaces, not just this one.
+    # Default is to only match monitors carrying the release label, which
+    # silently ignores everything you create elsewhere - a classic first
+    # encounter with "why is my target missing".
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+    ruleSelectorNilUsesHelmValues: false
+
+# Deferred to Block D to save ~300Mi.
+grafana:
+  enabled: false
+
+alertmanager:
+  enabled: false
+
+# Control-plane component scraping does not work on kind (the components
+# bind to localhost inside the node container), so disable to avoid
+# permanently-down targets cluttering the UI.
+kubeControllerManager: {enabled: false}
+kubeScheduler: {enabled: false}
+kubeProxy: {enabled: false}
+kubeEtcd: {enabled: false}
+
+prometheusOperator:
+  resources:
+    requests: {cpu: 50m, memory: 128Mi}
+    limits: {memory: 256Mi}
+
+kubeStateMetrics:
+  enabled: true
+
+nodeExporter:
+  enabled: false

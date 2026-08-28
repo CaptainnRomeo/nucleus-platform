@@ -1,0 +1,15 @@
+# Strimzi Kafka operator.
+# Watches Kafka/KafkaTopic/KafkaUser CRs and reconciles real brokers.
+
+# Watch all namespaces so the Kafka cluster can live in its own namespace
+# rather than alongside the operator. In production you would scope this
+# deliberately - a cluster-wide operator is a large blast radius.
+watchAnyNamespace: true
+
+resources:
+  requests: {cpu: 50m, memory: 192Mi}
+  limits: {memory: 384Mi}
+
+# The operator ships a Prometheus ServiceMonitor for its own metrics.
+# Broker metrics come separately via the JMX exporter on the Kafka CR.
+logLevel: INFO

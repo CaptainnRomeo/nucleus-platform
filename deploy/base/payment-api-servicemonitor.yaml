@@ -16,6 +16,10 @@ spec:
       # Drop high-cardinality labels the operator adds by default. Every
       # unique label combination is a separate time series - this is the
       # discipline that keeps Prometheus from OOMing at scale.
+      relabelings:
+        - sourceLabels: [__meta_kubernetes_pod_label_rollouts_pod_template_hash]
+          targetLabel: rollouts_pod_template_hash
+          action: replace
       metricRelabelings:
         - sourceLabels: [__name__]
           regex: 'python_gc_.*|process_.*'

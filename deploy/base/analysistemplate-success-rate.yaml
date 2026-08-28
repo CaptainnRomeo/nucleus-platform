@@ -4,22 +4,36 @@ metadata:
   name: success-rate
   namespace: payments
 spec:
+  args:
+    # Rollouts injects the CANARY ReplicaSet's pod-template-hash here.
+    # This is what scopes the query to pods under test.
+    - name: canary-hash
+      valueFrom:
+        podTemplateHashValue: Latest
+
   metrics:
     - name: success-rate
-      # Wait before first measurement so rate() has a full window of data.
-      initialDelay: 60s
+      initialDelay: 90s
       interval: 20s
-      # Abort after 3 consecutive breaches, not the first. A single scrape
-      # blip should not roll back a good deploy - but 3 in a row is signal.
-      failureLimit: 3
-      # Analysis must survive transient Prometheus unavailability rather
-      # than treating "cannot measure" as "deploy is bad".
-      consecutiveErrorLimit: 5
+      # Abort on the FIRST breach. failureLimit is a tolerance, not a
+      # trigger count - failureLimit: 3 means "allow 3 failures", which
+      # is how a 25% error rate previously sailed through the gate.
+      failureLimit: 0
+      # Still tolerate transient scrape gaps. "Cannot measure" is not
+      # the same as "measured and bad".
+      consecutiveErrorLimit: 3
       successCondition: result[0] >= 0.95
       provider:
         prometheus:
           address: http://monitoring-kube-prometheus-prometheus.monitoring.svc:9090
           query: |
-            sum(rate(http_requests_total{job="payment-api",status!~"5.."}[1m]))
+            sum(rate(http_requests_total{
+              job="payment-api",
+              rollouts_pod_template_hash="{{args.canary-hash}}",
+              status!~"5.."
+            }[1m]))
             /
-            sum(rate(http_requests_total{job="payment-api"}[1m]))
+            sum(rate(http_requests_total{
+              job="payment-api",
+              rollouts_pod_template_hash="{{args.canary-hash}}"
+            }[1m]))

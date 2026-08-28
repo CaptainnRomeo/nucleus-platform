@@ -1,0 +1,92 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: payment-api
+  namespace: payments
+  labels:
+    app.kubernetes.io/name: payment-api
+    app.kubernetes.io/component: api
+    nucleus.io/tier: "0"
+spec:
+  replicas: 4
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: payment-api
+
+  strategy:
+    canary:
+      # No traffic router configured, so Rollouts approximates traffic split
+      # by replica ratio: 25% weight with 4 replicas = 1 canary pod.
+      # A real setup uses an ingress or mesh for precise weighting - noted
+      # as a limitation, not a design choice.
+      steps:
+        - setWeight: 25
+        - pause: {duration: 60s}
+        - analysis:
+            templates:
+              - templateName: success-rate
+        - setWeight: 50
+        - pause: {duration: 60s}
+        - setWeight: 100
+
+      # Run analysis continuously from step 2 onward, not just at that step.
+      analysis:
+        templates:
+          - templateName: success-rate
+        startingStep: 2
+
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: payment-api
+    spec:
+      terminationGracePeriodSeconds: 45
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        fsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: api
+          image: nucleus/payment-api:0.1.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: APP_VERSION
+              value: "0.1.0"
+            - name: INJECT_ERROR_RATE
+              value: "0"
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests: {cpu: 50m, memory: 96Mi}
+            limits: {cpu: 200m, memory: 96Mi}
+          startupProbe:
+            httpGet: {path: /readyz, port: http}
+            periodSeconds: 2
+            failureThreshold: 15
+          readinessProbe:
+            httpGet: {path: /readyz, port: http}
+            periodSeconds: 3
+            failureThreshold: 2
+          livenessProbe:
+            httpGet: {path: /healthz, port: http}
+            periodSeconds: 10
+            failureThreshold: 3
+          lifecycle:
+            preStop:
+              sleep: {seconds: 5}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}

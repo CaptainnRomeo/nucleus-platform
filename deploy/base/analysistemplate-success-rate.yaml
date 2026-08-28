@@ -1,0 +1,25 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: success-rate
+  namespace: payments
+spec:
+  metrics:
+    - name: success-rate
+      # Wait before first measurement so rate() has a full window of data.
+      initialDelay: 60s
+      interval: 20s
+      # Abort after 3 consecutive breaches, not the first. A single scrape
+      # blip should not roll back a good deploy - but 3 in a row is signal.
+      failureLimit: 3
+      # Analysis must survive transient Prometheus unavailability rather
+      # than treating "cannot measure" as "deploy is bad".
+      consecutiveErrorLimit: 5
+      successCondition: result[0] >= 0.95
+      provider:
+        prometheus:
+          address: http://monitoring-kube-prometheus-prometheus.monitoring.svc:9090
+          query: |
+            sum(rate(http_requests_total{job="payment-api",status!~"5.."}[1m]))
+            /
+            sum(rate(http_requests_total{job="payment-api"}[1m]))

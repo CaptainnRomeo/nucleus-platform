@@ -1,0 +1,104 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: redis-config
+  namespace: kafka
+data:
+  redis.conf: |
+    # Deliberately tiny so we can hit the memory ceiling in seconds
+    # instead of hours. Production sizing is a capacity exercise; the
+    # BEHAVIOUR at the ceiling is what we want to observe.
+    maxmemory 32mb
+
+    # allkeys-lru: evict least-recently-used keys across the whole keyspace
+    # when full. Correct for a pure cache.
+    # The alternatives matter:
+    #   noeviction    -> WRITES START FAILING at the ceiling. Correct when
+    #                    Redis holds data you cannot lose (sessions, locks).
+    #   volatile-lru  -> only evicts keys with a TTL set. If nothing has a
+    #                    TTL, behaves exactly like noeviction - a classic
+    #                    surprise outage.
+    #   allkeys-lfu   -> frequency rather than recency. Better when a small
+    #                    hot set should survive a large scan.
+    maxmemory-policy allkeys-lru
+
+    # Log any command taking over 10ms. Redis is single-threaded, so a slow
+    # command blocks every other client - this is your primary latency tool.
+    slowlog-log-slower-than 10000
+    slowlog-max-len 128
+
+    # No persistence. This is a cache, not a database of record. Enabling
+    # RDB/AOF here would only add fork pauses and disk pressure.
+    save ""
+    appendonly no
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  namespace: kafka
+  labels:
+    app.kubernetes.io/name: redis
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: redis
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: redis
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: redis
+          image: redis:7.4-alpine
+          command: ["redis-server", "/etc/redis/redis.conf"]
+          ports:
+            - name: redis
+              containerPort: 6379
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            # Container limit above maxmemory: Redis needs headroom beyond
+            # the dataset for client buffers, replication backlog, and
+            # copy-on-write during any fork. Sizing the container equal to
+            # maxmemory gets you OOMKilled instead of eviction.
+            requests: {cpu: 50m, memory: 96Mi}
+            limits: {memory: 128Mi}
+          volumeMounts:
+            - name: config
+              mountPath: /etc/redis
+            - name: data
+              mountPath: /data
+          readinessProbe:
+            exec:
+              command: ["redis-cli", "ping"]
+            initialDelaySeconds: 5
+            periodSeconds: 5
+      volumes:
+        - name: config
+          configMap:
+            name: redis-config
+        - name: data
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  namespace: kafka
+spec:
+  selector:
+    app.kubernetes.io/name: redis
+  ports:
+    - name: redis
+      port: 6379
+      targetPort: redis

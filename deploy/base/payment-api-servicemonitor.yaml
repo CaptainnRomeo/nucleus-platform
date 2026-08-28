@@ -1,0 +1,25 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: payment-api
+  namespace: payments
+  labels:
+    app.kubernetes.io/name: payment-api
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: payment-api
+  endpoints:
+    - port: http          # the NAMED port on the Service, not a number
+      path: /metrics
+      interval: 10s       # fast for canary analysis; 30s is normal in prod
+      # Drop high-cardinality labels the operator adds by default. Every
+      # unique label combination is a separate time series - this is the
+      # discipline that keeps Prometheus from OOMing at scale.
+      metricRelabelings:
+        - sourceLabels: [__name__]
+          regex: 'python_gc_.*|process_.*'
+          action: drop
+  namespaceSelector:
+    matchNames:
+      - payments

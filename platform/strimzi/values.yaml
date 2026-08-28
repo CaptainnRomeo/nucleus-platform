@@ -7,8 +7,13 @@
 watchAnyNamespace: true
 
 resources:
-  requests: {cpu: 50m, memory: 192Mi}
-  limits: {memory: 384Mi}
+  requests: {cpu: 100m, memory: 512Mi}
+  # MaxRAMPercentage=20 means heap = 20% of THIS number.
+  # 1Gi -> ~205MB heap, which the operator needs for API discovery
+  # and its informer caches. 384Mi gave it 77MB and it exited on OOM
+  # without ever tripping the container limit.
+  limits: {memory: 1Gi}
+
 
 # The operator ships a Prometheus ServiceMonitor for its own metrics.
 # Broker metrics come separately via the JMX exporter on the Kafka CR.

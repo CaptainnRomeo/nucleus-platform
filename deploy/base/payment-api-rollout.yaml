@@ -22,19 +22,19 @@ spec:
       # as a limitation, not a design choice.
       steps:
         - setWeight: 25
-        - pause: {duration: 60s}
-        - analysis:
-            templates:
-              - templateName: success-rate
+        - pause: {duration: 90s}
         - setWeight: 50
-        - pause: {duration: 60s}
+        - pause: {duration: 90s}
         - setWeight: 100
 
-      # Run analysis continuously from step 2 onward, not just at that step.
+      # Background analysis: runs continuously from step 1 until the rollout
+      # finishes, so a regression appearing at ANY weight aborts. A step
+      # analysis would only check at one moment and needs an explicit count.
       analysis:
         templates:
           - templateName: success-rate
-        startingStep: 2
+        startingStep: 1
+
 
   template:
     metadata:

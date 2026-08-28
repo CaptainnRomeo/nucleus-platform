@@ -8,6 +8,8 @@ spec:
     # Rollouts injects the CANARY ReplicaSet's pod-template-hash here.
     # This is what scopes the query to pods under test.
     - name: canary-hash
+      valueFrom:
+        podTemplateHashValue: Latest
 
   metrics:
     - name: success-rate

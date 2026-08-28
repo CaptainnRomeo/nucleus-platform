@@ -1,0 +1,38 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: payment-api-slo-recording
+  namespace: payments
+  labels:
+    app.kubernetes.io/name: payment-api
+spec:
+  groups:
+    # Precompute the error ratio at each window the burn-rate alerts need.
+    # Without this, every alert re-evaluates the same rate() over the same
+    # series - cheap here, expensive across hundreds of services.
+    - name: payment-api.slo.rules
+      interval: 30s
+      rules:
+        - record: payment_api:error_ratio:rate5m
+          expr: |
+            sum(rate(http_requests_total{job="payment-api",status=~"5.."}[5m]))
+            /
+            sum(rate(http_requests_total{job="payment-api"}[5m]))
+
+        - record: payment_api:error_ratio:rate30m
+          expr: |
+            sum(rate(http_requests_total{job="payment-api",status=~"5.."}[30m]))
+            /
+            sum(rate(http_requests_total{job="payment-api"}[30m]))
+
+        - record: payment_api:error_ratio:rate1h
+          expr: |
+            sum(rate(http_requests_total{job="payment-api",status=~"5.."}[1h]))
+            /
+            sum(rate(http_requests_total{job="payment-api"}[1h]))
+
+        - record: payment_api:error_ratio:rate6h
+          expr: |
+            sum(rate(http_requests_total{job="payment-api",status=~"5.."}[6h]))
+            /
+            sum(rate(http_requests_total{job="payment-api"}[6h]))

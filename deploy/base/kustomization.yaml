@@ -9,6 +9,7 @@ resources:
   - analysistemplate-success-rate.yaml
   - payment-api-service.yaml
   - payment-api-servicemonitor.yaml
+  - slo/recording-rules.yaml
 
 labels:
   - pairs:

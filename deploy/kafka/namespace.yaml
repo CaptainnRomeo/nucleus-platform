@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kafka
+  labels:
+    # baseline, not restricted: the Kafka image runs its entrypoint script
+    # as a non-root user but needs write access to its data dir, and the
+    # official image is not built for a restricted profile.
+    pod-security.kubernetes.io/enforce: baseline
+    pod-security.kubernetes.io/enforce-version: v1.35
+    pod-security.kubernetes.io/warn: restricted
+    pod-security.kubernetes.io/warn-version: v1.35
+    nucleus.io/owner: platform-team
+    nucleus.io/env: dev

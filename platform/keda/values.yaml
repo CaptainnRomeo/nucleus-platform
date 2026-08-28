@@ -1,0 +1,13 @@
+# KEDA - event-driven autoscaling. Creates an HPA under the hood but feeds
+# it external metrics (Kafka lag, queue depth) instead of CPU/memory.
+# The key capability HPA lacks: scale to zero.
+resources:
+  operator:
+    requests: {cpu: 50m, memory: 128Mi}
+    limits: {memory: 256Mi}
+  metricServer:
+    requests: {cpu: 50m, memory: 128Mi}
+    limits: {memory: 256Mi}
+  webhooks:
+    requests: {cpu: 25m, memory: 64Mi}
+    limits: {memory: 128Mi}

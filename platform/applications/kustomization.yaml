@@ -6,3 +6,4 @@ resources:
   - argocd-selfmanage.yaml
   - argo-rollouts.yaml
   - monitoring.yaml
+  - keda.yaml

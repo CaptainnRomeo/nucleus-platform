@@ -1,0 +1,32 @@
+# Headless service: gives each StatefulSet pod a stable DNS name like
+# kafka-0.kafka-headless.kafka.svc.cluster.local. Kafka brokers advertise
+# these names to clients, so they must be stable across restarts - this is
+# exactly why Kafka is a StatefulSet and not a Deployment.
+apiVersion: v1
+kind: Service
+metadata:
+  name: kafka-headless
+  namespace: kafka
+spec:
+  clusterIP: None
+  selector:
+    app: kafka
+  ports:
+    - name: broker
+      port: 9092
+    - name: controller
+      port: 9093
+---
+# Regular ClusterIP for clients that just want "a broker".
+apiVersion: v1
+kind: Service
+metadata:
+  name: kafka
+  namespace: kafka
+spec:
+  selector:
+    app: kafka
+  ports:
+    - name: broker
+      port: 9092
+      targetPort: 9092

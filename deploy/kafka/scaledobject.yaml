@@ -1,0 +1,54 @@
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: ledger-worker
+  namespace: kafka
+spec:
+  scaleTargetRef:
+    name: ledger-worker
+
+  # Scale to zero when there is no lag. This is what HPA cannot do -
+  # minReplicas: 0 means no pods, no cost, while idle.
+  minReplicaCount: 0
+  # Never exceed partition count. A 4th consumer in a 3-partition group
+  # gets no assignment and idles - you pay for a pod that cannot work.
+  maxReplicaCount: 3
+
+  pollingInterval: 10
+  # Wait 60s of no-lag before scaling down. Prevents flapping when
+  # traffic is bursty.
+  cooldownPeriod: 60
+
+  advanced:
+    horizontalPodAutoscalerConfig:
+      behavior:
+        scaleUp:
+          # Aggressive: a lag storm needs capacity now.
+          stabilizationWindowSeconds: 0
+          policies:
+            - type: Pods
+              value: 3
+              periodSeconds: 15
+        scaleDown:
+          # Conservative: a consumer leaving triggers a rebalance, which
+          # pauses processing across the whole group. Scaling down eagerly
+          # can cause more lag than it saves.
+          stabilizationWindowSeconds: 120
+          policies:
+            - type: Pods
+              value: 1
+              periodSeconds: 60
+
+  triggers:
+    - type: kafka
+      metadata:
+        bootstrapServers: kafka.kafka.svc.cluster.local:9092
+        consumerGroup: ledger-workers
+        topic: payments.events
+        # Target lag PER REPLICA. KEDA computes desired replicas as
+        # ceil(totalLag / lagThreshold), capped at maxReplicaCount.
+        # 200 lag across 3 partitions -> ceil(2000/200) = 10 -> capped to 3.
+        lagThreshold: "200"
+        # Lag that triggers waking from zero.
+        activationLagThreshold: "10"
+        offsetResetPolicy: earliest

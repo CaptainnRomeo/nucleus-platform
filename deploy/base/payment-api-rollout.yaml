@@ -34,6 +34,12 @@ spec:
         templates:
           - templateName: success-rate
         startingStep: 1
+        # The template DECLARES canary-hash; the Rollout must SUPPLY it.
+        # Declaring valueFrom in the template alone is not sufficient.
+        args:
+          - name: canary-hash
+            valueFrom:
+              podTemplateHashValue: Latest
 
 
   template:
